@@ -11,10 +11,13 @@ Creates:
     with the `production` alias on v1 (the baseline every round compares to)
   - prompt `support-judge`: one version (data/judge_prompt_*.txt), `production`
   - dataset `kestrel-support-30` from data/test_set.csv, in one bulk call
+  - with the `fixed` step (after round 1): data/test_set_fixed.csv, built from
+    data/test_set.csv and data/grading_fixes.json, and dataset
+    `kestrel-support-30-fixed` from it
 
 Usage:
   python scripts/01_setup.py                 # every step (reads .env in the repo root)
-  python scripts/01_setup.py models prompts  # only some steps: models, prompts, dataset
+  python scripts/01_setup.py models prompts  # only some steps: models, prompts, dataset, fixed
 """
 import csv
 import os
@@ -139,6 +142,23 @@ def dataset(name, csv_name):
     return d["id"]
 
 
+def write_fixed_csv():
+    """data/test_set.csv with the rules in data/grading_fixes.json swapped in (round 2 and 3)."""
+    import json
+    fixes = json.loads((DATA / "grading_fixes.json").read_text())
+    with open(DATA / "test_set.csv", newline="") as f:
+        rows = list(csv.DictReader(f))
+    unknown = set(fixes) - {r["question"] for r in rows}
+    if unknown:
+        raise SystemExit(f"grading_fixes.json names questions not in test_set.csv: {unknown}")
+    with open(DATA / "test_set_fixed.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["category", "question", "criteria"], lineterminator="\n")
+        w.writeheader()
+        for r in rows:
+            w.writerow({**r, "criteria": fixes.get(r["question"], r["criteria"])})
+    print(f"data        test_set_fixed.csv: {len(fixes)} of {len(rows)} grading rules changed")
+
+
 def main():
     steps = sys.argv[1:] or ["models", "prompts", "dataset"]
     if "models" in steps:
@@ -152,6 +172,9 @@ def main():
         prompt(JUDGE_PROMPT, "Grades one support reply against its grading rules", [(judge_messages(), JUDGE_MODEL)])
     if "dataset" in steps:
         dataset("kestrel-support-30", "test_set.csv")
+    if "fixed" in steps:
+        write_fixed_csv()
+        dataset("kestrel-support-30-fixed", "test_set_fixed.csv")
 
 
 if __name__ == "__main__":
