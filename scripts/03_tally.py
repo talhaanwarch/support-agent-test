@@ -48,9 +48,13 @@ def tally_round(folder, categories):
     avg = {}
     counts = {}
     versions = []
+    warnings = []
     for path in runs:
         data = json.loads(path.read_text())
         name = path.stem
+        status = data.get("status", data["report"].get("status"))
+        if status != "succeeded":
+            warnings.append(f"{name} ended with status '{status}'; its numbers may be incomplete.")
         passes[name] = defaultdict(lambda: defaultdict(int))
         counts[name] = defaultdict(lambda: defaultdict(int))
         for cell in data["report"]["cells"]:
@@ -67,7 +71,7 @@ def tally_round(folder, categories):
                 counts[name][label][group] += 1
                 counts[name][label]["unscored"] += ex["passed"] is None
                 passes[name][label][group] += ex["passed"] is True
-    return runs, versions, passes, counts, avg
+    return runs, versions, passes, counts, avg, warnings
 
 
 def table(header, rows):
@@ -77,9 +81,10 @@ def table(header, rows):
 
 
 def render_round(folder, categories):
-    runs, versions, passes, counts, avg = tally_round(folder, categories)
+    runs, versions, passes, counts, avg, warnings = tally_round(folder, categories)
     names = [p.stem for p in runs]
     lines = [f"## {folder.name}", ""]
+    lines += [f"**Warning:** {w}" for w in warnings] + ([""] if warnings else [])
 
     for name in names:
         rows = []
