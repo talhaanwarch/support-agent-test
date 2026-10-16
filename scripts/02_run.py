@@ -16,6 +16,7 @@ Usage:
   python scripts/02_run.py round1 --save RUN_ID  # save a run you started in the dashboard
 """
 import json
+import os
 import sys
 import time
 import urllib.parse
@@ -25,7 +26,7 @@ from importlib import import_module
 setup = import_module("01_setup")  # same .env loading and HTTP helper
 call, items, ROOT = setup.call, setup.items, setup.ROOT
 
-RUNS = 3
+RUNS = int(os.environ.get("RUNS", 3))  # runs per round
 ROUNDS = {
     "round1": ("v2", "kestrel-support-30"),
     "round2": ("v2", "kestrel-support-30-fixed"),
