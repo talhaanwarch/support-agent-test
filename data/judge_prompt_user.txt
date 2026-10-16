@@ -1,0 +1,7 @@
+Grading rules:
+{{ criteria }}
+
+Reply to grade:
+<<<REPLY>>>
+{{ output }}
+<<<END REPLY>>>
